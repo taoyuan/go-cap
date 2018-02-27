@@ -189,6 +189,26 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/taoyuan/go-awt"
+  packages = [
+    ".",
+    "infra/osencap",
+    "infra/re",
+    "infra/str",
+    "tools/iu",
+    "tools/iw",
+    "tools/wpa"
+  ]
+  revision = "88b06743ef7d4f139c7668bf0e038842e322754b"
+
+[[projects]]
+  name = "github.com/thoas/go-funk"
+  packages = ["."]
+  revision = "14304e8530de7dbb909c8305591b3a8370dd9dbb"
+  version = "0.2"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
@@ -233,6 +253,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fa802c3b95cc48ec49ba684a0e7ad6d276c71bf38c2622b8a900fbf8937462ea"
+  inputs-digest = "e890ff91dd4f1eb42112516858f974c443501f55f62e4921f4ba09e518fbb30a"
   solver-name = "gps-cdcl"
   solver-version = 1

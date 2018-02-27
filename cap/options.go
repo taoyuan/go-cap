@@ -1,6 +1,6 @@
 package cap
 
-import "go-awt/tools/iu"
+import "github.com/taoyuan/go-awt/tools/iu"
 
 type Option struct {
 	Name      string
