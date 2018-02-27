@@ -52,6 +52,7 @@
   name = "github.com/spf13/cobra"
   version = "0.0.1"
 
+
 [[constraint]]
   branch = "master"
-  name = "github.com/taoyuan/go-awt"
+  name = "github.com/olebedev/emitter"

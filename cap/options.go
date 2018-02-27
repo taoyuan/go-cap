@@ -238,7 +238,7 @@ var Options = []Option{
 		Shorthand: "",
 		CapOpt:    "-d",
 		Type:      "bool",
-		Usage:     "Disable dnsmasq server completely",
+		Usage:     "DNS server will take into account /etc/hosts",
 	},
 	{
 		Name:      "addn-hosts",

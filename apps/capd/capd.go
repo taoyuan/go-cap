@@ -53,7 +53,7 @@ func initConfig(cmd *cobra.Command, cfgFile string) {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println(err)
+		log.Warn(err)
 		//os.Exit(1)
 	}
 

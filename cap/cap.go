@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 	"go-cap/config"
+	"github.com/olebedev/emitter"
 )
 
 var CommandCreateAP = "create_ap"
@@ -13,6 +14,7 @@ type AP struct {
 	cmd  *cmd.Cmd
 	ch   <-chan cmd.Status
 	curr int
+	e    *emitter.Emitter
 }
 
 func CreateAP(m map[string]interface{}) (*AP, error) {
@@ -49,7 +51,7 @@ func CreateAPWithConfig(c config.Provider) (*AP, error) {
 			continue
 		}
 
-		if o.Type == "string" &&  v.(string) != "" {
+		if o.Type == "string" && v.(string) != "" {
 			args = append(args, o.CapOpt, v.(string))
 			continue
 		}
