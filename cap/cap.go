@@ -113,9 +113,6 @@ func (ap *AP) Start() <-chan cmd.Status {
 
 
 func (ap *AP) Stop() error {
-	if !ap.IsRunning() {
-		return errors.New("ap: not started")
-	}
 	return ap.cmd.Stop()
 }
 
