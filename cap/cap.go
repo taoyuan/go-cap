@@ -13,14 +13,14 @@ var CommandCreateAP = "create_ap"
 
 type AP struct {
 	emitter.Emitter
-	cmd  *cmd.Cmd
-	ch   <-chan cmd.Status
+	cmd *cmd.Cmd
+	ch  <-chan cmd.Status
 }
 
-type OutListener func (lines []string)
+type OutListener func(lines []string)
 
-func wrapMiddleware(listener OutListener) func (event *emitter.Event) {
-	return func (event *emitter.Event) {
+func wrapMiddleware(listener OutListener) func(event *emitter.Event) {
+	return func(event *emitter.Event) {
 		if len(event.Args) > 0 {
 			listener(event.Args[0].([]string))
 		}
@@ -84,12 +84,25 @@ func (ap *AP) Start() <-chan cmd.Status {
 	ap.ch = ap.cmd.Start()
 
 	go func() {
-		curr := 0
+		outpos := 0
+		errpos := 0
 		for range time.NewTicker(time.Duration(200) * time.Millisecond).C {
-			if st := ap.cmd.Status(); ap.IsRunning() && curr < len(st.Stdout) {
-				output := st.Stdout[curr:]
-				curr = len(st.Stdout)
+			st := ap.Status()
+
+			if outpos < len(st.Stdout) {
+				output := st.Stdout[outpos:]
+				outpos = len(st.Stdout)
 				ap.Emit("stdout", output)
+			}
+
+			if errpos < len(st.Stderr) {
+				output := st.Stderr[errpos:]
+				errpos = len(st.Stderr)
+				ap.Emit("stderr", output)
+			}
+
+			if !ap.IsRunning() && outpos >= len(st.Stdout) && errpos >= len(st.Stderr) {
+				return
 			}
 		}
 
@@ -97,6 +110,7 @@ func (ap *AP) Start() <-chan cmd.Status {
 
 	return ap.ch
 }
+
 
 func (ap *AP) Stop() error {
 	if !ap.IsRunning() {
@@ -106,8 +120,8 @@ func (ap *AP) Stop() error {
 }
 
 func (ap *AP) Wait() error {
-	if !ap.IsRunning() {
-		return errors.New("ap: not started")
+	if ap.ch == nil {
+		return nil
 	}
 	status := <-ap.ch
 	if status.Error != nil {
@@ -124,5 +138,6 @@ func (ap *AP) Status() cmd.Status {
 }
 
 func (ap *AP) IsRunning() bool {
-	return ap.ch != nil
+	st := ap.cmd.Status()
+	return st.StopTs <= 0 && ap.ch != nil
 }
