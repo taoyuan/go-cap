@@ -105,6 +105,13 @@ func (p *program) Start() error {
 			}
 			p.ap = ap
 
+			ap.On("stderr", func (event *emitter.Event) {
+				lines := event.Args[0].([]string)
+				for line := range lines {
+					fmt.Errorf("%s", line)
+				}
+			})
+
 			flags := cmd.Flags()
 			if ok, _ := flags.GetBool("verbose"); ok {
 				ap.On("stdout", func (event *emitter.Event) {
