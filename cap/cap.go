@@ -15,17 +15,7 @@ type AP struct {
 	emitter.Emitter
 	cmd *cmd.Cmd
 	cch <-chan cmd.Status
-	wch <-chan int
-}
-
-type OutListener func(lines []string)
-
-func wrapMiddleware(listener OutListener) func(event *emitter.Event) {
-	return func(event *emitter.Event) {
-		if len(event.Args) > 0 {
-			listener(event.Args[0].([]string))
-		}
-	}
+	wch chan int
 }
 
 func CreateAP(m map[string]interface{}) (*AP, error) {
@@ -108,7 +98,7 @@ func (ap *AP) Start() <-chan cmd.Status {
 				break
 			}
 		}
-		ap.wch <- 1
+		ap.wch <- 0
 	}()
 
 	return ap.cch
