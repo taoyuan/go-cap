@@ -9,8 +9,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/prometheus/common/log"
 	"github.com/judwhite/go-svc/svc"
-	"go-cap/cap"
 	"path/filepath"
+	"go-cap/cap"
+	"github.com/olebedev/emitter"
 )
 
 // service example: https://github.com/nsqio/nsq/blob/master/apps/nsqd/nsqd.go
@@ -18,7 +19,8 @@ import (
 func setupFlags(cmd *cobra.Command, cfgFile *string) {
 	flags := cmd.Flags()
 	flags.StringVarP(cfgFile, "config", "f", "", "config file (default is $HOME/.capd.yaml)")
-	for _, o := range cap.Options {
+	flags.BoolP("verbose", "v", false,"Print create_ap output")
+	for _, o := range cap.GetOptions() {
 		val := o.Default
 		if o.Type == "bool" {
 			if val == nil {
@@ -60,7 +62,7 @@ func initConfig(cmd *cobra.Command, cfgFile string) {
 	flags := cmd.Flags()
 
 	var val interface{}
-	for _, o := range cap.Options {
+	for _, o := range cap.GetOptions() {
 		if o.Type == "bool" {
 			val, _ = flags.GetBool(o.Name)
 		} else if o.Type == "string" {
@@ -102,6 +104,17 @@ func (p *program) Start() error {
 				log.Fatal(err)
 			}
 			p.ap = ap
+
+			flags := cmd.Flags()
+			if ok, _ := flags.GetBool("verbose"); ok {
+				ap.On("stdout", func (event *emitter.Event) {
+					lines := event.Args[0].([]string)
+					for line := range lines {
+						fmt.Println(line)
+					}
+				})
+			}
+
 			ap.Start()
 		},
 	}

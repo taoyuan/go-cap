@@ -6,15 +6,25 @@ import (
 	"strconv"
 	"go-cap/config"
 	"github.com/olebedev/emitter"
+	"time"
 )
 
 var CommandCreateAP = "create_ap"
 
 type AP struct {
+	emitter.Emitter
 	cmd  *cmd.Cmd
 	ch   <-chan cmd.Status
-	curr int
-	e    *emitter.Emitter
+}
+
+type OutListener func (lines []string)
+
+func wrapMiddleware(listener OutListener) func (event *emitter.Event) {
+	return func (event *emitter.Event) {
+		if len(event.Args) > 0 {
+			listener(event.Args[0].([]string))
+		}
+	}
 }
 
 func CreateAP(m map[string]interface{}) (*AP, error) {
@@ -24,8 +34,9 @@ func CreateAP(m map[string]interface{}) (*AP, error) {
 
 func CreateAPWithConfig(c config.Provider) (*AP, error) {
 	var args []string
+	options := GetOptions()
 
-	for _, o := range Options {
+	for _, o := range options {
 		if !c.IsSet(o.Name) {
 			continue
 		}
@@ -57,32 +68,45 @@ func CreateAPWithConfig(c config.Provider) (*AP, error) {
 		}
 	}
 
-	return &AP{
-		cmd:  cmd.NewCmd(CommandCreateAP, args...),
-		ch:   nil,
-		curr: 0,
-	}, nil
-
+	ap := &AP{
+		emitter.Emitter{},
+		cmd.NewCmd(CommandCreateAP, args...),
+		nil,
+	}
+	ap.Use("*", emitter.Void)
+	return ap, nil
 }
 
 func (ap *AP) Start() <-chan cmd.Status {
-	if ap.ch != nil {
+	if ap.IsRunning() {
 		return ap.ch
 	}
 	ap.ch = ap.cmd.Start()
-	ap.curr = 0
+
+	go func() {
+		curr := 0
+		for range time.NewTicker(time.Duration(200) * time.Millisecond).C {
+			if st := ap.cmd.Status(); ap.IsRunning() && curr < len(st.Stdout) {
+				output := st.Stdout[curr:]
+				curr = len(st.Stdout)
+				ap.Emit("stdout", output)
+			}
+		}
+
+	}()
+
 	return ap.ch
 }
 
 func (ap *AP) Stop() error {
-	if ap.ch == nil {
+	if !ap.IsRunning() {
 		return errors.New("ap: not started")
 	}
 	return ap.cmd.Stop()
 }
 
 func (ap *AP) Wait() error {
-	if ap.ch == nil {
+	if !ap.IsRunning() {
 		return errors.New("ap: not started")
 	}
 	status := <-ap.ch
@@ -99,12 +123,6 @@ func (ap *AP) Status() cmd.Status {
 	return ap.cmd.Status()
 }
 
-func (ap *AP) Output() []string {
-	status := ap.cmd.Status()
-	if ap.curr < len(status.Stdout) {
-		output := status.Stdout[ap.curr:]
-		ap.curr = len(status.Stdout)
-		return output
-	}
-	return nil
+func (ap *AP) IsRunning() bool {
+	return ap.ch != nil
 }

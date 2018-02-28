@@ -3,10 +3,11 @@ package cap
 import (
 	"testing"
 	"github.com/smartystreets/goconvey/convey"
-	"time"
 	"github.com/stretchr/testify/assert"
 	"github.com/prashantv/gostub"
+	"time"
 	"strings"
+	"github.com/olebedev/emitter"
 )
 
 const OUTPUT_STARTED = `WARN: Your adapter does not fully support AP virtual interface, enabling --no-virt
@@ -31,6 +32,11 @@ const OUTPUT_ERROR = `WARN: Your adapter does not fully support AP virtual inter
 ERROR: 'eth1' is not an interface`
 
 func TestCreateAP(t *testing.T) {
+	stub := gostub.Stub(&ResolveIface, func (iface interface{}) (interface{}, error) {
+		return iface.(string), nil
+	})
+	defer stub.Reset()
+
 	convey.Convey("Run with map success", t, func() {
 		stub := gostub.Stub(&CommandCreateAP, "test/create_ap_ok")
 		defer stub.Reset()
@@ -41,17 +47,21 @@ func TestCreateAP(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, ap)
 
+		var output []string
+		ap.On("stdout", func(event *emitter.Event){
+			output = append(output, event.Args[0].([]string)...)
+		})
+
 		ap.Start()
 		time.Sleep(time.Duration(1) * time.Second)
 
-		output := ap.Output()
 		expected := strings.Split(OUTPUT_STARTED, "\n")
 		assert.Equal(t, expected, output)
 
+		output = []string{}
 		ap.Stop()
 		time.Sleep(time.Duration(1) * time.Second)
 
-		output = ap.Output()
 		expected = strings.Split(OUTPUT_DONE, "\n")
 		assert.Equal(t, expected, output)
 
@@ -69,17 +79,21 @@ func TestCreateAP(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, ap)
 
+		var output []string
+		ap.On("stdout", func(event *emitter.Event){
+			output = append(output, event.Args[0].([]string)...)
+		})
+
 		ap.Start()
 		time.Sleep(time.Duration(1) * time.Second)
 
-		output := ap.Output()
 		expected := strings.Split(OUTPUT_STARTED, "\n")
 		assert.Equal(t, expected, output)
 
+		output = []string{}
 		ap.Stop()
 		time.Sleep(time.Duration(1) * time.Second)
 
-		output = ap.Output()
 		expected = strings.Split(OUTPUT_DONE, "\n")
 		assert.Equal(t, expected, output)
 
@@ -97,10 +111,14 @@ func TestCreateAP(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, ap)
 
+		var output []string
+		ap.On("stdout", func(event *emitter.Event){
+			output = append(output, event.Args[0].([]string)...)
+		})
+
 		ap.Start()
 		time.Sleep(time.Duration(1) * time.Second)
 
-		output := ap.Output()
 		expected := strings.Split(OUTPUT_ERROR, "\n")
 		assert.Equal(t, expected, output)
 
