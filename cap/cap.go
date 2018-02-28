@@ -14,7 +14,8 @@ var CommandCreateAP = "create_ap"
 type AP struct {
 	emitter.Emitter
 	cmd *cmd.Cmd
-	ch  <-chan cmd.Status
+	cch <-chan cmd.Status
+	wch <-chan int
 }
 
 type OutListener func(lines []string)
@@ -72,6 +73,7 @@ func CreateAPWithConfig(c config.Provider) (*AP, error) {
 		emitter.Emitter{},
 		cmd.NewCmd(CommandCreateAP, args...),
 		nil,
+		nil,
 	}
 	ap.Use("*", emitter.Void)
 	return ap, nil
@@ -79,9 +81,10 @@ func CreateAPWithConfig(c config.Provider) (*AP, error) {
 
 func (ap *AP) Start() <-chan cmd.Status {
 	if ap.IsRunning() {
-		return ap.ch
+		return ap.cch
 	}
-	ap.ch = ap.cmd.Start()
+	ap.cch = ap.cmd.Start()
+	ap.wch = make(chan int)
 
 	go func() {
 		outpos := 0
@@ -102,25 +105,25 @@ func (ap *AP) Start() <-chan cmd.Status {
 			}
 
 			if !ap.IsRunning() && outpos >= len(st.Stdout) && errpos >= len(st.Stderr) {
-				return
+				break
 			}
 		}
-
+		ap.wch <- 1
 	}()
 
-	return ap.ch
+	return ap.cch
 }
-
 
 func (ap *AP) Stop() error {
 	return ap.cmd.Stop()
 }
 
 func (ap *AP) Wait() error {
-	if ap.ch == nil {
+	if ap.cch == nil {
 		return nil
 	}
-	status := <-ap.ch
+	status := <-ap.cch
+	<- ap.wch
 	if status.Error != nil {
 		return status.Error
 	}
@@ -136,5 +139,5 @@ func (ap *AP) Status() cmd.Status {
 
 func (ap *AP) IsRunning() bool {
 	st := ap.cmd.Status()
-	return st.StopTs <= 0 && ap.ch != nil
+	return st.StopTs <= 0 && ap.cch != nil
 }

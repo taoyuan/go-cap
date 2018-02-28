@@ -107,8 +107,8 @@ func (p *program) Start() error {
 
 			ap.On("stderr", func (event *emitter.Event) {
 				lines := event.Args[0].([]string)
-				for line := range lines {
-					fmt.Errorf("%s", line)
+				for _, line := range lines {
+					fmt.Println(line)
 				}
 			})
 
@@ -116,13 +116,21 @@ func (p *program) Start() error {
 			if ok, _ := flags.GetBool("verbose"); ok {
 				ap.On("stdout", func (event *emitter.Event) {
 					lines := event.Args[0].([]string)
-					for line := range lines {
+					for _, line := range lines {
 						fmt.Println(line)
 					}
 				})
 			}
 
 			ap.Start()
+
+			err = ap.Wait()
+			if err != nil {
+				fmt.Errorf("%s", err)
+				os.Exit(1)
+				return
+			}
+			os.Exit(0)
 		},
 	}
 
