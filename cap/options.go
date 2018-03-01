@@ -172,9 +172,9 @@ func GetOptions() []Option {
 			Usage:     "Set frequency band. Valid inputs: 2.4, 5 (default: 2.4)",
 		},
 		{
-			Name:      "diver",
+			Name:      "driver",
 			Shorthand: "",
-			CapOpt:    "--diver",
+			CapOpt:    "--driver",
 			Type:      "string",
 			Usage:     "Choose your WiFi adapter driver (default: nl80211)",
 		},
