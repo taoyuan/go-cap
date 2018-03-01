@@ -5,20 +5,19 @@ import (
 	"os"
 	"syscall"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/mitchellh/go-homedir"
 	"github.com/prometheus/common/log"
 	"github.com/judwhite/go-svc/svc"
 	"path/filepath"
 	"go-cap/cap"
 	"github.com/olebedev/emitter"
+	"go-cap/config"
 )
 
 // service example: https://github.com/nsqio/nsq/blob/master/apps/nsqd/nsqd.go
 
-func setupFlags(cmd *cobra.Command, cfgFile *string) {
+func setupFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
-	flags.StringVarP(cfgFile, "config", "f", "", "config file (default is $HOME/.capd.yaml)")
+	flags.StringP("config", "f", "", "config file")
 	flags.BoolP("verbose", "v", false,"Print create_ap output")
 	for _, o := range cap.GetOptions() {
 		val := o.Default
@@ -36,30 +35,40 @@ func setupFlags(cmd *cobra.Command, cfgFile *string) {
 	}
 }
 
-func initConfig(cmd *cobra.Command, cfgFile string) {
-	// Don't forget to read config either from cfgFile or from home directory!
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".cobra" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName("capd")
-	}
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Warn(err)
-		//os.Exit(1)
-	}
-
+func initConfig(cmd *cobra.Command) *config.Config {
+	cfg := config.New()
 	flags := cmd.Flags()
+
+	cfg.AddFile("/etc/capd/capd.yaml", true)
+	cfg.AddFile("./capd.yaml", true)
+
+	cfgFile, _ := flags.GetString("config")
+	if cfgFile != "" {
+		cfg.AddFile(cfgFile, false)
+	}
+
+	//if cfgFile != "" {
+	//	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
+	//		log.Fatalf("config file (%s) not exist", cfgFile)
+	//	}
+	//} else {
+	//	cfgFile = "./capd.yaml"
+	//	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
+	//		cfgFile = "/etc/capd/capd.yaml"
+	//	}
+	//}
+	//
+	//// config file exist
+	//if _, err := os.Stat(cfgFile); err == nil {
+	//	viper.SetConfigFile(cfgFile)
+	//
+	//}
+	//
+	//if err := viper.ReadInConfig(); err != nil {
+	//	log.Warn(err)
+	//	//os.Exit(1)
+	//}
+
 
 	var val interface{}
 	for _, o := range cap.GetOptions() {
@@ -72,9 +81,11 @@ func initConfig(cmd *cobra.Command, cfgFile string) {
 			val = o.Default
 		}
 		if val != nil {
-			viper.Set(o.Name, val)
+			cfg.Set(o.Name, val)
 		}
 	}
+
+	return cfg
 }
 
 type program struct {
@@ -91,15 +102,14 @@ func (p *program) Init(env svc.Environment) error {
 }
 
 func (p *program) Start() error {
-	var cfgFile string
 
 	// create command
 	cmd := &cobra.Command{
 		Use:   "capd",
 		Short: "capd is the create_ap daemon",
 		Run: func(cmd *cobra.Command, args []string) {
-			initConfig(cmd, cfgFile)
-			ap, err := cap.CreateAP(viper.AllSettings())
+			cfg := initConfig(cmd)
+			ap, err := cap.CreateAP(cfg.AllSettings())
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -135,7 +145,7 @@ func (p *program) Start() error {
 	}
 
 	// init flags
-	setupFlags(cmd, &cfgFile)
+	setupFlags(cmd)
 
 	// execute
 	if err := cmd.Execute(); err != nil {
